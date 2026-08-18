@@ -1,0 +1,35 @@
+# Release configuration for the language host plugin.
+#
+# The Ruby SDK is not released from here -- it is published to RubyGems from sdk/ruby by
+# the release workflow. This file covers only the Go binary the Pulumi CLI downloads.
+version: 2
+
+project_name: pulumi-ruby
+
+builds:
+  - id: pulumi-language-ruby
+    binary: pulumi-language-ruby
+    dir: pulumi-language-ruby
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      # The symbol path must match pulumi-language-ruby/go.mod; the linker silently
+      # ignores a -X it cannot resolve, which would ship an unstamped binary.
+      - -X github.com/pulumi-labs/pulumi-ruby/pulumi-language-ruby/version.Version={{.Version}}
+
+archives:
+  # The CLI's plugin downloader expects `pulumi-<kind>-<name>-v<version>-<os>-<arch>.tar.gz`
+  # with the binary at the archive root.
+  - id: pulumi-language-ruby
+    name_template: "pulumi-language-ruby-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    formats: [tar.gz]
+    wrap_in_directory: false
+
+checksum:
+  name_template: "pulumi-ruby-{{ .Version }}-checksums.txt"
+
+release:
+  prerelease: auto

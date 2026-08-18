@@ -1,0 +1,32 @@
+# Developer tool versions, shared with CI.
+#
+# `mise install` provisions everything below; `mise exec -- <cmd>` or an activated shell
+# then puts the pinned versions on PATH.
+
+[settings]
+# Use ruby-lang.org's precompiled builds rather than ruby-build. Compiling from source
+# needs libyaml/openssl headers that are not present on a stock macOS box, and the
+# precompiled path installs in seconds rather than minutes.
+ruby.compile = false
+
+[tools]
+# The floor the gemspec declares is 3.3; development tracks the current stable release.
+ruby = "3.4"
+
+# Matches the `go` directive in pulumi-language-ruby/go.mod. Bump both together.
+go = "1.26"
+
+# Same version pinned by pulumi-dotnet, pulumi-java and pulumi-hcl.
+golangci-lint = "2.12.2"
+
+# Changelog fragments, same version as pulumi-dotnet, pulumi-java and pulumi-yaml.
+changie = "1.24.2"
+
+# Regenerating the gRPC bindings; see scripts/sync-protos.sh.
+protoc = "29.5"
+
+[tool_alias]
+protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
+
+[plugins]
+protoc = "https://github.com/paxosglobal/asdf-protoc"

@@ -1,0 +1,66 @@
+# Lint configuration for the Go language host (./pulumi-language-ruby).
+#
+# Adapted from pulumi-labs/pulumi-rust, which is the closest comparator: an out-of-tree
+# Pulumi language host with a codegen package. See CONTRIBUTING.md for how to run it.
+#
+# NOTE: the Ruby SDK is linted by RuboCop, not by this file. golangci-lint only ever sees
+# ./pulumi-language-ruby.
+version: "2"
+
+linters:
+  enable:
+    - durationcheck
+    - exhaustive
+    - goprintffuncname
+    - gosec
+    - importas
+    - misspell
+    - nakedret
+    - nolintlint
+    - perfsprint
+    - prealloc
+    - revive
+    - unconvert
+    - usetesting
+    - wastedassign
+    - whitespace
+
+  settings:
+    gosec:
+      excludes:
+        # A language host exists to run a toolchain against directories the engine names,
+        # so "subprocess launched with a variable" and "file inclusion via variable"
+        # describe its normal operation rather than a finding. The engine is the only
+        # caller and is not an untrusted input.
+        - G204
+        - G304
+        - G703
+        # PULUMI_CONFIG_SECRET_KEYS is the name of an environment variable, not a secret.
+        - G101
+    exhaustive:
+      # A switch over a protobuf enum that handles the cases the SDK cares about and falls
+      # through for the rest is deliberate, not an oversight.
+      default-signifies-exhaustive: true
+    govet:
+      enable:
+        - nilness
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: unused-parameter
+          # gRPC handlers take request arguments they do not always read; renaming each to
+          # _ would make the signatures harder to match against the proto.
+          disabled: true
+
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

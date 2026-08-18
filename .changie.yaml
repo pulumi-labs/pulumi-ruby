@@ -1,0 +1,44 @@
+changesDir: .changes
+unreleasedDir: unreleased
+# Resolved relative to changesDir, i.e. .changes/header.tpl.md
+headerPath: header.tpl.md
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '## {{.Version}} - {{.Time.Format "2006-01-02"}}'
+kindFormat: '### {{.Kind}}'
+kinds:
+  - label: Improvements
+    key: improvements
+    auto: minor
+  - label: Bug Fixes
+    key: bug-fixes
+    auto: patch
+  - label: Dependencies
+    key: dependencies
+    auto: patch
+# The component is a custom field rather than changie's built-in `components:` list. With
+# `components:` set, changie sorts changes by component *before* kind, which splits a
+# release into repeated "### Improvements" headers, one per component. Keeping the
+# component out of the built-in field sorts purely by kind, so each kind header appears
+# exactly once.
+#
+# `changie new` writes the fragment with os.Create, which truncates an existing file, so
+# the name has to be unique per fragment rather than per change: one PR can legitimately
+# carry two improvements to the same component. The timestamp is what guarantees that.
+fragmentFileFormat: '{{.Custom.Component}}-{{.Kind}}-{{.Custom.PR}}-{{.Time.Format "20060102150405"}}'
+changeFormat: '- [{{.Custom.Component}}] {{.Body}} [#{{.Custom.PR}}](https://github.com/pulumi-labs/pulumi-ruby/pull/{{.Custom.PR}})'
+custom:
+  - key: Component
+    label: Component
+    type: enum
+    enumOptions:
+      - sdk
+      - language
+      - codegen
+  - key: PR
+    label: GitHub Pull Request or Issue Number
+    type: int
+newlines:
+  afterChangelogHeader: 1
+  beforeChangelogVersion: 1
+  endOfVersion: 1
