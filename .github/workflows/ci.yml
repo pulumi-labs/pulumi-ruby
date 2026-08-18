@@ -28,7 +28,7 @@ jobs:
     defaults:
       run: { working-directory: sdk/ruby }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -48,8 +48,8 @@ jobs:
     defaults:
       run: { working-directory: pulumi-language-ruby }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: pulumi-language-ruby/go.mod
           cache-dependency-path: pulumi-language-ruby/go.sum
@@ -59,8 +59,10 @@ jobs:
       # and a network.
       - run: go test -run 'Test[^L]' ./...
       - run: go mod tidy -diff
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
+          # Keep in step with .mise.toml, so that CI and `make lint` agree.
+          version: v2.12.2
           working-directory: pulumi-language-ruby
           args: --config ../.golangci.yml
 
@@ -68,17 +70,17 @@ jobs:
     name: conformance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
           bundler-cache: true
           working-directory: sdk/ruby
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: pulumi-language-ruby/go.mod
           cache-dependency-path: pulumi-language-ruby/go.sum
-      - uses: pulumi/actions@v6
+      - uses: pulumi/actions@v7
       # Pulumi's cross-language conformance suite: the same programs and assertions every
       # language runtime is held to. It packs the SDK, installs it, and runs real
       # deployments, so it is slower than the unit tests and gets its own job.
@@ -88,16 +90,16 @@ jobs:
     name: example (pulumi up)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
           bundler-cache: true
           working-directory: sdk/ruby
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: pulumi-language-ruby/go.mod
-      - uses: pulumi/actions@v6
+      - uses: pulumi/actions@v7
       - name: Build and install the language host
         run: |
           make build_language_host
