@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+# Steep checks a sample *program* against sig/, not the SDK's own implementation.
+#
+# The signatures are there so users can type-check their infrastructure code; proving that
+# works is the useful assertion. Type-checking the SDK internals would mean writing
+# signatures for every private runtime detail, which would pin them and make refactoring a
+# breaking change for no one's benefit.
+target :program do
+  signature "sig", "typecheck/sig"
+  check "typecheck/program.rb"
+
+  library "json"
+end

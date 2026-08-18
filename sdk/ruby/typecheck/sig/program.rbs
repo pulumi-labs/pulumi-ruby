@@ -1,0 +1,7 @@
+# A program's own classes need their own signatures, exactly as they would in a real
+# project. This file doubles as the worked example of how to write one for a component.
+class Website < Pulumi::ComponentResource
+  attr_reader endpoint: Pulumi::Output[untyped]
+
+  def initialize: (String name, index_html: String, ?opts: Pulumi::ResourceOptions?) -> void
+end

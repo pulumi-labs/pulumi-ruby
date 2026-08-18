@@ -1,0 +1,256 @@
+# Type signatures for the public surface of the Pulumi SDK.
+#
+# These exist so that a Ruby program can be type-checked with Steep or Sorbet -- the most
+# common objection to Ruby for infrastructure is the absence of the checking that
+# TypeScript gives, and RBS is the standard answer.
+#
+# The runtime internals under Pulumi::Runtime are deliberately not described here: they
+# are not public API, and pinning them would make refactoring them a breaking change.
+
+module Pulumi
+  VERSION: String
+
+  # A value that may or may not be wrapped in an Output. Generated SDKs will type resource
+  # arguments with this.
+  type input[T] = T | Output[T]
+
+  # Anything that can be a resource property once resolved.
+  type property = String | Integer | Float | bool | nil | Array[property] | Hash[untyped, property]
+
+  def self.config: (?String? namespace) -> Config
+  def self.export: (String | Symbol name, untyped value) -> void
+  def self.invoke: (String token, ?Hash[untyped, untyped] args, ?InvokeOptions?) -> Output[Hash[String, untyped]]
+  def self.project: () -> String
+  def self.stack: () -> String
+  def self.organization: () -> String
+  def self.dry_run?: () -> bool
+
+  class Error < StandardError
+  end
+
+  class RunError < Error
+  end
+
+  class OutputToStringError < Error
+    MESSAGE: String
+  end
+
+  class ConfigMissingError < Error
+    attr_reader key: String
+  end
+
+  class ConfigTypeError < Error
+  end
+
+  class Output[out T]
+    class Data[T]
+      attr_reader value: T?
+      attr_reader known: bool
+      attr_reader secret: bool
+      attr_reader resources: Array[Resource]
+
+      def self.known: [U] (U value, ?secret: bool, ?resources: Array[Resource]) -> Data[U]
+      def self.unknown: (?secret: bool, ?resources: Array[Resource]) -> Data[untyped]
+    end
+
+    def self.from: [U] (input[U] value) -> Output[U]
+    def self.all: (*untyped args, **untyped kwargs) -> Output[untyped]
+    def self.secret: [U] (input[U] value) -> Output[U]
+    def self.unsecret: [U] (Output[U] output) -> Output[U]
+    def self.format: (String format_string, *untyped args, **untyped kwargs) -> Output[String]
+    def self.concat: (*untyped parts) -> Output[String]
+    def self.json_dump: (untyped value) -> Output[String]
+    def self.json_parse: (input[String] text, ?symbolize_names: bool) -> Output[untyped]
+
+    def apply: [U] () { (T value) -> input[U] } -> Output[U]
+    def rescue_apply: [U] () { (Exception error) -> input[U] } -> Output[U]
+
+    # Deliberately absent: to_str, to_ary, to_hash, to_proc and to_int. Answering Ruby's
+    # implicit conversion protocol turns a clear TypeError into a baffling one.
+    def to_s: () -> String
+    def inspect: () -> String
+  end
+
+  class Resource
+    attr_reader urn: Output[String]
+    attr_reader pulumi_type: String
+    attr_reader pulumi_name: String
+
+    def custom?: () -> bool
+    def output: (String | Symbol name) -> Output[untyped]
+    def outputs: () -> Output[Hash[String, untyped]]
+    def children: () -> Array[Resource]
+  end
+
+  class CustomResource < Resource
+    attr_reader id: Output[String]
+
+    def initialize: (String type, String name, ?Hash[untyped, untyped] props, ?ResourceOptions?) ?{ (untyped) -> void } -> void
+  end
+
+  class ComponentResource < Resource
+    def initialize: (String type, String name, ?Hash[untyped, untyped] props, ?ResourceOptions?) ?{ (untyped) -> void } -> void
+    def register_outputs: (?Hash[untyped, untyped] outputs) -> void
+  end
+
+  class ProviderResource < CustomResource
+    attr_reader package: String
+
+    def initialize: (String package, String name, ?Hash[untyped, untyped] props, ?ResourceOptions?) ?{ (untyped) -> void } -> void
+  end
+
+  class StackReference < CustomResource
+    TYPE: String
+
+    attr_reader name: Output[String]
+    attr_reader outputs: Output[Hash[String, untyped]]
+    attr_reader secret_output_names: Output[Array[String]]
+
+    def initialize: (String name, ?stack_name: String?, ?opts: ResourceOptions?) -> void
+    def output: (String | Symbol name) -> Output[untyped]
+    def require_output: (String | Symbol name) -> Output[untyped]
+  end
+
+  class CustomTimeouts
+    attr_reader create: String?
+    attr_reader update: String?
+    attr_reader delete: String?
+
+    def initialize: (?create: String?, ?update: String?, ?delete: String?) -> void
+  end
+
+  class ResourceOptions
+    attr_accessor parent: Resource?
+    attr_accessor depends_on: Array[Resource]?
+    attr_accessor protect: bool?
+    attr_accessor provider: ProviderResource?
+    attr_accessor providers: untyped
+    attr_accessor version: String?
+    attr_accessor plugin_download_url: String?
+    attr_accessor ignore_changes: Array[String]?
+    attr_accessor additional_secret_outputs: Array[String]?
+    attr_accessor delete_before_replace: bool?
+    attr_accessor replace_on_changes: Array[String]?
+    attr_accessor retain_on_delete: bool?
+    attr_accessor deleted_with: Resource?
+    attr_accessor custom_timeouts: CustomTimeouts?
+    attr_accessor import: String?
+    attr_accessor aliases: Array[String]?
+
+    def initialize: (
+      ?parent: Resource?, ?depends_on: Array[Resource]?, ?protect: bool?,
+      ?provider: ProviderResource?, ?providers: untyped, ?version: String?,
+      ?plugin_download_url: String?, ?ignore_changes: Array[String]?,
+      ?additional_secret_outputs: Array[String]?, ?delete_before_replace: bool?,
+      ?replace_on_changes: Array[String]?, ?retain_on_delete: bool?,
+      ?deleted_with: Resource?, ?custom_timeouts: CustomTimeouts?, ?import: String?,
+      ?aliases: Array[String]?
+    ) -> void
+
+    def self.merge: (ResourceOptions? base, ResourceOptions? overrides) -> ResourceOptions?
+  end
+
+  class InvokeOptions
+    attr_accessor provider: ProviderResource?
+    attr_accessor version: String?
+    attr_accessor plugin_download_url: String?
+    attr_accessor parent: Resource?
+    attr_accessor depends_on: Array[Resource]?
+
+    def initialize: (?provider: ProviderResource?, ?version: String?, ?plugin_download_url: String?,
+                     ?parent: Resource?, ?depends_on: Array[Resource]?) -> void
+  end
+
+  class Config
+    attr_reader namespace: String
+
+    def initialize: (?String? namespace) -> void
+
+    def get: (String key) -> String?
+    def require: (String key) -> String
+    def get_secret: (String key) -> Output[String]?
+    def require_secret: (String key) -> Output[String]
+
+    def get_boolean: (String key) -> bool?
+    def require_boolean: (String key) -> bool
+    def get_secret_boolean: (String key) -> Output[bool]?
+    def require_secret_boolean: (String key) -> Output[bool]
+
+    def get_integer: (String key) -> Integer?
+    def require_integer: (String key) -> Integer
+    def get_secret_integer: (String key) -> Output[Integer]?
+    def require_secret_integer: (String key) -> Output[Integer]
+
+    def get_float: (String key) -> Float?
+    def require_float: (String key) -> Float
+    def get_secret_float: (String key) -> Output[Float]?
+    def require_secret_float: (String key) -> Output[Float]
+
+    def get_object: (String key) -> untyped
+    def require_object: (String key) -> untyped
+    def get_secret_object: (String key) -> Output[untyped]?
+    def require_secret_object: (String key) -> Output[untyped]
+
+    def secret?: (String key) -> bool
+  end
+
+  class Asset
+  end
+
+  class FileAsset < Asset
+    attr_reader path: String
+    def initialize: (String path) -> void
+  end
+
+  class StringAsset < Asset
+    attr_reader text: String
+    def initialize: (String text) -> void
+  end
+
+  class RemoteAsset < Asset
+    attr_reader uri: String
+    def initialize: (String uri) -> void
+  end
+
+  class Archive
+  end
+
+  class FileArchive < Archive
+    attr_reader path: String
+    def initialize: (String path) -> void
+  end
+
+  class RemoteArchive < Archive
+    attr_reader uri: String
+    def initialize: (String uri) -> void
+  end
+
+  class AssetArchive < Archive
+    attr_reader assets: Hash[String, Asset | Archive]
+    def initialize: (Hash[String, Asset | Archive] assets) -> void
+  end
+
+  # The base of every generated arguments class. Codegen emits one per resource and
+  # declares its properties, which is what turns a misspelling into an ArgumentError.
+  class Args
+    def self.property: (String | Symbol name) -> void
+    def self.declared_properties: () -> Array[Symbol]
+    def self.open?: () -> bool
+    def self.build: (?Hash[untyped, untyped] values) ?{ (untyped) -> void } -> Args
+
+    def initialize: (**untyped values) -> void
+    def to_h: () -> Hash[Symbol, untyped]
+  end
+
+  class OpenArgs < Args
+  end
+
+  module Log
+    URN_TIMEOUT_SECONDS: Integer
+
+    def self.debug: (String message, ?resource: Resource?, ?ephemeral: bool) -> void
+    def self.info: (String message, ?resource: Resource?, ?ephemeral: bool) -> void
+    def self.warn: (String message, ?resource: Resource?, ?ephemeral: bool) -> void
+    def self.error: (String message, ?resource: Resource?, ?ephemeral: bool) -> void
+  end
+end

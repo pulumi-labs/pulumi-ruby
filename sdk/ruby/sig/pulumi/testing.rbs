@@ -1,0 +1,53 @@
+module Pulumi
+  # The unit-testing surface. Kept separate from the main signatures because programs
+  # depend on it only from their specs.
+  module Testing
+    class ResourceArgs
+      attr_reader type: String
+      attr_reader name: String
+      attr_reader inputs: Hash[String, untyped]
+      attr_reader provider: String
+      attr_reader id: String
+      attr_reader custom: bool
+      attr_reader parent: String
+    end
+
+    class InvokeArgs
+      attr_reader token: String
+      attr_reader args: Hash[String, untyped]
+      attr_reader provider: String
+    end
+
+    class RegisteredResource
+      attr_reader type: String
+      attr_reader name: String
+      attr_reader urn: String
+      attr_reader id: String
+      attr_reader inputs: Hash[String, untyped]
+      attr_reader outputs: Hash[String, untyped]
+      attr_reader parent: String
+    end
+
+    class Result
+      attr_reader exports: Hash[String, untyped]?
+      attr_reader resources: Array[RegisteredResource]
+
+      def resource: (String name) -> RegisteredResource?
+    end
+
+    class Mocks
+      def new_resource: (ResourceArgs args) -> [String, Hash[String, untyped]]
+      def invoke: (InvokeArgs args) -> Hash[String, untyped]
+    end
+
+    def self.run: (
+      ?Mocks mocks, ?project: String, ?stack: String, ?dry_run: bool,
+      ?config: Hash[String, String], ?stack_outputs: Hash[String, Hash[String, untyped]],
+      ?secret_stack_outputs: Array[String]
+    ) { () -> void } -> Result
+
+    def self.value: (untyped output, ?timeout: Numeric) -> untyped
+    def self.secret?: (untyped output, ?timeout: Numeric) -> bool
+    def self.known?: (untyped output, ?timeout: Numeric) -> bool
+  end
+end
