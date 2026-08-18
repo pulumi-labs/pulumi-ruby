@@ -1,0 +1,30 @@
+/dist/
+
+# `make build_language_host` writes the binary beside its source.
+/pulumi-language-ruby/pulumi-language-ruby
+
+# Ruby
+*.gem
+sdk/.bundle/
+sdk/vendor/
+sdk/pkg/
+sdk/coverage/
+sdk/.yardoc/
+sdk/doc/
+sdk/.rubocop_cache/
+
+# Steep / RBS
+sdk/.steep/
+
+# Protos are synced from pulumi/pulumi; the generated Ruby is checked in but the
+# .proto sources themselves are not.
+/proto/pulumi/
+/proto/google/
+
+# Example projects resolve the SDK by path, so their lockfiles and stack config are
+# machine-local rather than something to share.
+examples/**/Gemfile.lock
+examples/**/Pulumi.*.yaml
+
+# The SDK is a library gem, so its lockfile is not shared.
+sdk/ruby/Gemfile.lock
