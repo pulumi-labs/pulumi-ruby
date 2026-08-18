@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+# Copyright 2026, Pulumi Corporation.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# frozen_string_literal: true
+
+# The entry point pulumi-language-ruby invokes to run a Pulumi program.
+#
+# This ships in the `pulumi` gem rather than alongside the language plugin binary so that
+# the shim and the SDK it loads are always the same version -- they are two halves of one
+# contract, and skew between them produces confusing failures.
+
+# Exit code the language host reads as "a useful message was already printed; don't wrap
+# this in a generic error".
+EXIT_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE = 32
+
+begin
+  require "pulumi"
+rescue LoadError => e
+  warn e.message
+  warn <<~MESSAGE
+
+    It looks like the Pulumi SDK for Ruby has not been installed.
+
+    If this project has a Gemfile, run `pulumi install` (or `bundle install`) to install
+    its dependencies. Otherwise, install the SDK with `gem install pulumi`.
+  MESSAGE
+  exit EXIT_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE
+end
+
+require "optparse"
+
+options = {}
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: pulumi-language-ruby-exec [options] <entrypoint> [args...]"
+
+  opts.on("--monitor ADDRESS")      { |v| options[:monitor_address] = v }
+  opts.on("--engine ADDRESS")       { |v| options[:engine_address] = v }
+  opts.on("--project NAME")         { |v| options[:project] = v }
+  opts.on("--root-directory PATH")  { |v| options[:root_directory] = v }
+  opts.on("--stack NAME")           { |v| options[:stack] = v }
+  opts.on("--pwd PATH")             { |v| options[:pwd] = v }
+  opts.on("--dry-run BOOL")         { |v| options[:dry_run] = v == "true" }
+  opts.on("--parallel N", Integer)  { |v| options[:parallel] = v }
+  opts.on("--tracing ENDPOINT")     { |v| options[:tracing] = v }
+  opts.on("--organization NAME")    { |v| options[:organization] = v }
+end
+
+rest = parser.parse(ARGV)
+
+entry_point = rest.shift
+if entry_point.nil?
+  warn parser.banner
+  exit EXIT_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE
+end
+
+options[:program_args] = rest
+
+exit Pulumi::Runtime.main(entry_point, **options)
