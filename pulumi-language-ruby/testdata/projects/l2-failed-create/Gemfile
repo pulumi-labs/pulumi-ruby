@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-fail_on_create", path: "ROOT/artifacts/pulumi-fail_on_create"
+gem "pulumi", path: "ROOT/artifacts/pulumi"
+gem "pulumi-simple", path: "ROOT/artifacts/pulumi-simple"

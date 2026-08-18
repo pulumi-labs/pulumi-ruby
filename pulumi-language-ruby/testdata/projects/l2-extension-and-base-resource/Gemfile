@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-extbase", path: "ROOT/artifacts/pulumi-extbase"
+gem "pulumi-myext", path: "ROOT/artifacts/pulumi-myext"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

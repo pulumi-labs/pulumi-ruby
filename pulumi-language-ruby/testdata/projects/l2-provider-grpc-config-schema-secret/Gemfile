@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-config-grpc", path: "ROOT/artifacts/pulumi-config-grpc"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

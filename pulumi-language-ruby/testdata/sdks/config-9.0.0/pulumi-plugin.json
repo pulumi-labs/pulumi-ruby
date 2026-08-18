@@ -1,0 +1,6 @@
+{
+  "name": "config",
+  "resource": true,
+  "server": "http://example.com",
+  "version": "9.0.0"
+}

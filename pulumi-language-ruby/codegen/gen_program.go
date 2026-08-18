@@ -47,6 +47,11 @@ type generator struct {
 	// same goes for the standard-library requires below.
 	needsConfig bool
 	needsDigest bool
+
+	// requiredPackages records the Pulumi packages whose generated gems the program uses,
+	// so the preamble can require them. Collected during generation because it is the
+	// resources that reveal them.
+	requiredPackages map[string]struct{}
 }
 
 // rubyNameInfo tells PCL's rewriters what a name looks like in Ruby, so that the
@@ -57,7 +62,7 @@ func (rubyNameInfo) Format(name string) string { return localName(name) }
 
 // GenerateProgram translates a bound PCL program into Ruby source files.
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	g := &generator{}
+	g := &generator{requiredPackages: map[string]struct{}{}}
 
 	// Rewrite expressions that read an Output into explicit applies before generating.
 	//
@@ -93,6 +98,9 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	out.WriteString("require \"pulumi\"\n")
 	if g.needsDigest {
 		out.WriteString("require \"digest\"\n")
+	}
+	for _, name := range sortedKeys(g.requiredPackages) {
+		fmt.Fprintf(&out, "require %q\n", "pulumi/"+toSnakeCase(name))
 	}
 	if g.needsConfig {
 		out.WriteString("\nconfig = Pulumi.config\n")
@@ -268,6 +276,15 @@ func unwrapType(t model.Type) model.Type {
 			return t
 		}
 	}
+}
+
+func sortedKeys(set map[string]struct{}) []string {
+	keys := make([]string, 0, len(set))
+	for key := range set {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func (g *generator) writef(format string, args ...any) {

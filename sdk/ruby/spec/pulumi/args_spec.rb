@@ -125,6 +125,34 @@ RSpec.describe Pulumi::Args do
     end
   end
 
+  # Schemas are camelCase and Ruby is snake_case, so a generated Args declares both: the
+  # program writes the Ruby name and the provider receives its own.
+  describe "wire names" do
+    let(:bucket_args) do
+      Class.new(described_class) do
+        def self.name = "BucketArgs"
+
+        property :bucket_name, wire: :bucketName
+        property :acl
+      end
+    end
+
+    it "sends the provider's name, not the Ruby one" do
+      args = bucket_args.build(bucket_name: "assets", acl: "private")
+      expect(args.to_h).to eq({ bucketName: "assets", acl: "private" })
+    end
+
+    it "still accepts the Ruby name in every construction form" do
+      expect(bucket_args.build { |b| b.bucket_name = "x" }.to_h).to eq({ bucketName: "x" })
+      expect(bucket_args.build { bucket_name "x" }.to_h).to eq({ bucketName: "x" })
+    end
+
+    it "rejects the provider's spelling, which is not the Ruby API" do
+      expect { bucket_args.build(bucketName: "x") }
+        .to raise_error(ArgumentError, /unknown property :bucketName/)
+    end
+  end
+
   describe "reading back" do
     it "returns a property when called with no arguments" do
       args = bucket_args.build(acl: "private")

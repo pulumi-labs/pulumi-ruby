@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-plain", path: "ROOT/artifacts/pulumi-plain"
+gem "pulumi-primitive", path: "ROOT/artifacts/pulumi-primitive"
+gem "pulumi-primitive-ref", path: "ROOT/artifacts/pulumi-primitive-ref"
+gem "pulumi", path: "ROOT/artifacts/pulumi"
+gem "pulumi-ref-ref", path: "ROOT/artifacts/pulumi-ref-ref"

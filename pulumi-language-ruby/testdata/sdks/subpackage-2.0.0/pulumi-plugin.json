@@ -1,0 +1,5 @@
+{
+  "name": "subpackage",
+  "resource": true,
+  "version": "2.0.0"
+}

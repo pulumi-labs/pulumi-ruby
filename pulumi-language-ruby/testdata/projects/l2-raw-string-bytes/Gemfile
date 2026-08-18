@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-bytesink", path: "ROOT/artifacts/pulumi-bytesink"
+gem "pulumi-bytesource", path: "ROOT/artifacts/pulumi-bytesource"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

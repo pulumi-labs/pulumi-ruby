@@ -7,11 +7,12 @@ methods and blocks; deploy them with the Pulumi CLI.
 > security, but community involvement is welcome, and projects with enough interest can
 > graduate to full support.
 >
-> The core SDK and language host work end to end — you can `pulumi up` a Ruby program
-> against real providers today. SDK generation (`pulumi package gen-sdk --language ruby`)
-> and program generation (`pulumi convert --language ruby`) are not implemented yet, so
-> providers are reached through their type token for now. See
-> [known limitations](docs/known-limitations.md) and the [roadmap](#roadmap).
+> The core SDK, the language host, and both generators work end to end — you can
+> `pulumi up` a Ruby program against real providers today, generate an SDK for one with
+> `pulumi package gen-sdk --language ruby`, and convert a program with
+> `pulumi convert --language ruby`. Both generators cover a subset of the schema and PCL
+> surface; see [known limitations](docs/known-limitations.md) and the
+> [roadmap](#roadmap).
 
 Ruby is the most-requested language in
 [pulumi/pulumi#132](https://github.com/pulumi/pulumi/issues/132) by a wide margin. Much of
@@ -302,14 +303,14 @@ Done:
 - RBS signatures in `sig/`, with a sample program type-checked by Steep in CI
 - Program generation: `pulumi convert --language ruby`, and generated programs for the
   conformance suite
+- SDK generation: `pulumi package gen-sdk --language ruby`, producing a gem whose resources
+  are named classes with declared properties
 
 Next:
 
-- **SDK generation** — `pulumi package gen-sdk --language ruby`, so providers are used as
-  `Pulumi::Aws::S3::Bucket.new("assets", acl: "private")` with declared properties, typo
-  detection and RBS signatures, instead of a raw type token. This is the single largest
-  piece of remaining work, and it unblocks most of the conformance suite.
-- The 13 program-generation gaps named in `expectedFailures`.
+- **Invokes** — provider functions, the largest group of remaining conformance failures.
+- Enums, object types and RBS signatures in generated SDKs.
+- Components and hooks in programgen; the rest of the gaps named in `expectedFailures`.
 - Resource transforms and hooks.
 - Provider authoring, so a component written in Ruby can be consumed from another language.
 - Automation API.
@@ -327,14 +328,13 @@ $ make test_conformance TEST_FILTER=l1-empty   # just one
 $ make accept                                  # regenerate snapshots after a codegen change
 ```
 
-**21 of 179 tests pass today**, from programs this repository generates rather than
-hand-written ones. Nothing is skipped by category: every remaining test is named in
-`expectedFailures` in `pulumi-language-ruby/language_test.go` with the reason, so the size
-of that map is exactly the remaining work.
+**29 of 179 tests pass today**, against SDKs and programs this repository generates.
+Nothing is skipped by category: every remaining test is named in `expectedFailures` in
+`pulumi-language-ruby/language_test.go` with the construct that blocks it, so the size of
+that map is exactly the remaining work.
 
-Of the 158 outstanding, 145 need SDK generation — they use a provider, so there is no
-program to write until `pulumi package gen-sdk --language ruby` exists. The other 13 are
-specific constructs programgen does not translate yet.
+The largest group of the 150 outstanding is invokes — provider functions, which need
+sdkgen to emit their bindings — followed by component and hook declarations in programgen.
 
 ## License## License
 

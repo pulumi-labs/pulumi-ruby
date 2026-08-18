@@ -15,17 +15,64 @@
 package codegen
 
 import (
+	"strings"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // genResource emits a resource declaration.
 //
-// Resources are constructed through Pulumi::CustomResource with their type token rather
-// than a generated class, because SDK generation is not implemented yet. The shape is the
-// same either way -- name, inputs, options -- so the programs this emits keep working
-// unchanged once generated SDKs replace the token.
+// A resource bound to a schema goes through its generated class; one without a schema
+// falls back to a type token. Both produce the same registration -- the difference is
+// whether the program gets declared properties and a name a reader recognises.
 func (g *generator) genResource(r *pcl.Resource) {
+	// Definition.Labels[0] rather than the deprecated Name(): the two are the same, but
+	// Name() is on its way out. LogicalName() is separate and must not be substituted --
+	// it is what reaches RegisterResource, so changing it would rename the resource.
+	variable := localName(r.Definition.Labels[0])
+
+	if r.Schema != nil {
+		g.genGeneratedResource(variable, r)
+		return
+	}
+	g.genTokenResource(variable, r)
+}
+
+// genGeneratedResource emits a resource through its generated class.
+//
+// This is the form a user writes: a named class taking keyword arguments, so a misspelled
+// property is an ArgumentError at the call rather than something the provider rejects much
+// later. The class carries its own type token, which is why none appears here.
+func (g *generator) genGeneratedResource(variable string, r *pcl.Resource) {
+	class, packageName := rubyResourceClass(r.Schema)
+	g.requiredPackages[packageName] = struct{}{}
+
+	g.writef("%s = %s.new(%s", variable, class, quote(r.LogicalName()))
+	g.indented(func() {
+		for _, input := range r.Inputs {
+			g.writef(",")
+			g.newline()
+			// The generated class takes Ruby names; translating to the wire name is its
+			// business, not the program's.
+			g.writef("%s: ", localName(input.Name))
+			g.genExpression(input.Value)
+		}
+		if options := g.resourceOptions(r); options != "" {
+			g.writef(",")
+			g.newline()
+			g.writef("opts: %s", options)
+		}
+	})
+	g.writef(")")
+}
+
+// genTokenResource emits a resource whose schema is unknown, using its type token.
+//
+// This is what a program gets without a generated SDK: it works against any provider, but
+// gives up declared properties, so it is the fallback rather than the goal.
+func (g *generator) genTokenResource(variable string, r *pcl.Resource) {
 	token, _ := r.GetToken()
 
 	class := "Pulumi::CustomResource"
@@ -33,19 +80,13 @@ func (g *generator) genResource(r *pcl.Resource) {
 		class = "Pulumi::ComponentResource"
 	}
 
-	// Definition.Labels[0] rather than the deprecated Name(): the two are the same, but
-	// Name() is on its way out. LogicalName() is separate and must not be substituted --
-	// it is what reaches RegisterResource, so changing it would rename the resource.
-	variable := localName(r.Definition.Labels[0])
-
 	g.writef("%s = %s.new(%s, %s, {", variable, class, quote(token), quote(r.LogicalName()))
 	if len(r.Inputs) > 0 {
 		g.indented(func() {
 			for _, input := range r.Inputs {
 				g.newline()
 				// Provider property names go on the wire as written, so they are string keys
-				// rather than symbols: PCL preserves the schema's casing and the SDK does not
-				// translate it.
+				// rather than symbols: PCL preserves the schema's casing.
 				g.writef("%s => ", quote(input.Name))
 				g.genExpression(input.Value)
 				g.writef(",")
@@ -101,4 +142,21 @@ func (g *generator) resourceOptions(r *pcl.Resource) string {
 		return ""
 	}
 	return "Pulumi::ResourceOptions.new(" + nested.buf.String() + ")"
+}
+
+// rubyResourceClass maps a schema resource onto its generated Ruby class, and reports the
+// package whose gem has to be required.
+func rubyResourceClass(r *schema.Resource) (class, packageName string) {
+	packageName = r.PackageReference.Name()
+
+	module, name := splitToken(r.Token)
+	parts := []string{"", "Pulumi", pascalCase(packageName)}
+	if module != "" && module != "index" {
+		for _, segment := range strings.Split(module, "/") {
+			parts = append(parts, pascalCase(segment))
+		}
+	}
+	parts = append(parts, pascalCase(name))
+
+	return strings.Join(parts, "::"), packageName
 }

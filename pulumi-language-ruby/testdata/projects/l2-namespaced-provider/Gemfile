@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-component", path: "ROOT/artifacts/pulumi-component"
+gem "pulumi-namespaced", path: "ROOT/artifacts/pulumi-namespaced"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

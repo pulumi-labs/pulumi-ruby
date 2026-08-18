@@ -18,10 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi-labs/pulumi-ruby/pulumi-language-ruby/codegen"
@@ -121,14 +120,43 @@ func (host *rubyLanguageHost) GenerateProject(
 	return &pulumirpc.GenerateProjectResponse{Diagnostics: plugin.HclDiagnosticsToRPCDiagnostics(diagnostics)}, nil
 }
 
-// GeneratePackage generates a Ruby SDK ("sdkgen") from a package schema.
-//
-// Not implemented yet, so providers are reached through their type token instead. Reported
-// as Unimplemented rather than stubbed with an empty response so the engine and the
-// conformance harness can detect the gap rather than silently produce an empty gem.
+// GeneratePackage generates a Ruby SDK gem ("sdkgen") from a package schema.
 func (host *rubyLanguageHost) GeneratePackage(
-	context.Context, *pulumirpc.GeneratePackageRequest,
+	_ context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
-	return nil, status.Error(codes.Unimplemented,
-		"Ruby SDK generation is not implemented yet; see https://github.com/pulumi-labs/pulumi-ruby")
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(loader)
+
+	var spec schema.PackageSpec
+	if err := json.Unmarshal([]byte(req.Schema), &spec); err != nil {
+		return nil, fmt.Errorf("parsing schema: %w", err)
+	}
+
+	pkg, diagnostics, err := schema.BindSpec(spec, schema.NewCachedLoader(loader), schema.ValidationOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if diagnostics.HasErrors() {
+		return nil, diagnostics
+	}
+
+	files, err := codegen.GeneratePackage("pulumi-language-ruby", pkg, req.ExtraFiles, req.LocalDependencies)
+	if err != nil {
+		return nil, err
+	}
+
+	for name, contents := range files {
+		path := filepath.Join(req.Directory, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			return nil, fmt.Errorf("creating %s: %w", filepath.Dir(path), err)
+		}
+		if err := os.WriteFile(path, contents, 0o600); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", path, err)
+		}
+	}
+
+	return &pulumirpc.GeneratePackageResponse{}, nil
 }

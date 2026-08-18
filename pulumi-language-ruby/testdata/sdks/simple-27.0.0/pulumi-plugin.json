@@ -1,0 +1,6 @@
+{
+  "name": "simple",
+  "resource": true,
+  "server": "https://github.com/pulumi/pulumi-simple/releases/v${VERSION}",
+  "version": "27.0.0"
+}

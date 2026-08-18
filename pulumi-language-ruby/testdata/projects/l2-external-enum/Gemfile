@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-enum", path: "ROOT/artifacts/pulumi-enum"
+gem "pulumi-extenumref", path: "ROOT/artifacts/pulumi-extenumref"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

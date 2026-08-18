@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-camelNames", path: "ROOT/artifacts/pulumi-camelNames"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

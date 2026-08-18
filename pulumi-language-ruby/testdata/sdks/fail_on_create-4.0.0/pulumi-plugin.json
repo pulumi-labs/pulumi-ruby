@@ -1,0 +1,5 @@
+{
+  "name": "fail_on_create",
+  "resource": true,
+  "version": "4.0.0"
+}

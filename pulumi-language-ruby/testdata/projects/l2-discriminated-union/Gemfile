@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "pulumi-discriminated-union", path: "ROOT/artifacts/pulumi-discriminated-union"
+gem "pulumi", path: "ROOT/artifacts/pulumi"

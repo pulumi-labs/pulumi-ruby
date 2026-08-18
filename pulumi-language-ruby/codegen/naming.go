@@ -79,3 +79,20 @@ func toSnakeCase(name string) string {
 	}
 	return out.String()
 }
+
+// pascalCase converts an identifier to Ruby's module/class casing.
+//
+// Applied per underscore- or hyphen-separated segment, so `s3` stays `S3` and
+// `azure-native` becomes `AzureNative`. A segment that is already PascalCase is left
+// alone rather than being re-split, so `RandomPet` does not become `Randompet`.
+func pascalCase(name string) string {
+	var out strings.Builder
+	for _, segment := range strings.FieldsFunc(name, func(r rune) bool {
+		return r == '_' || r == '-' || r == ' '
+	}) {
+		runes := []rune(segment)
+		out.WriteRune(unicode.ToUpper(runes[0]))
+		out.WriteString(string(runes[1:]))
+	}
+	return out.String()
+}

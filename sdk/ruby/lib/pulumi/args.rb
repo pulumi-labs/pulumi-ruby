@@ -47,8 +47,14 @@ module Pulumi
       # define_method rather than method_missing: it is an order of magnitude faster, the
       # methods are visible to `respond_to?`, ruby-lsp and YARD, and a misspelling raises
       # instead of being quietly accepted.
-      def property(name)
+      #
+      # `wire:` is the name the provider knows the property by. Schemas are camelCase and
+      # Ruby is snake_case, so generated SDKs declare both: the program says `bucket_name`
+      # and the provider receives `bucketName`. It defaults to the Ruby name, which is what
+      # a hand-written Args wants.
+      def property(name, wire: nil)
         declared_properties << name.to_sym
+        wire_names[name.to_sym] = (wire || name).to_sym
 
         define_method(:"#{name}=") { |value| @values[name.to_sym] = value }
         define_method(name) do |*args|
@@ -65,6 +71,11 @@ module Pulumi
       # @return [Array<Symbol>] every property declared on this class and its ancestors
       def declared_properties
         @declared_properties ||= superclass.respond_to?(:declared_properties) ? superclass.declared_properties.dup : []
+      end
+
+      # @return [Hash{Symbol => Symbol}] Ruby property name to the name the provider uses
+      def wire_names
+        @wire_names ||= superclass.respond_to?(:wire_names) ? superclass.wire_names.dup : {}
       end
 
       # Whether this class accepts properties it has not declared. Only {OpenArgs} does.
@@ -105,9 +116,11 @@ module Pulumi
       end
     end
 
-    # @return [Hash{Symbol => Object}] the properties set, ready to serialize
+    # @return [Hash{Symbol => Object}] the properties set, keyed by the names the provider
+    #   uses rather than the Ruby ones
     def to_h
-      @values.dup
+      wire = self.class.wire_names
+      @values.to_h { |name, value| [wire.fetch(name, name), value] }
     end
 
     def inspect
