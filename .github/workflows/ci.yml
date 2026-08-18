@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdk:
+    name: sdk (ruby ${{ matrix.ruby }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.3 is the floor the gemspec declares; 4.0 is current. Windows and macOS are in
+        # the matrix because grpc and google-protobuf ship separate precompiled binaries
+        # per platform, and a missing one only shows up on that platform.
+        ruby: ["3.3", "3.4", "4.0"]
+        os: [ubuntu-latest]
+        include:
+          - { ruby: "3.4", os: macos-latest }
+          - { ruby: "3.4", os: windows-latest }
+    defaults:
+      run: { working-directory: sdk/ruby }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: sdk/ruby
+      - run: bundle exec rspec
+      - name: Types and style
+        # Both are properties of the code, not of the interpreter running it.
+        if: matrix.ruby == '3.4' && matrix.os == 'ubuntu-latest'
+        run: |
+          bundle exec rake types
+          bundle exec rubocop
+
+  language-host:
+    name: language host
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: pulumi-language-ruby }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pulumi-language-ruby/go.mod
+          cache-dependency-path: pulumi-language-ruby/go.sum
+      - run: go build ./...
+      - run: go vet ./...
+      # The conformance test is excluded here; it gets its own job because it needs Ruby
+      # and a network.
+      - run: go test -run 'Test[^L]' ./...
+      - run: go mod tidy -diff
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: pulumi-language-ruby
+          args: --config ../.golangci.yml
+
+  conformance:
+    name: conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: sdk/ruby
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pulumi-language-ruby/go.mod
+          cache-dependency-path: pulumi-language-ruby/go.sum
+      - uses: pulumi/actions@v6
+      # Pulumi's cross-language conformance suite: the same programs and assertions every
+      # language runtime is held to. It packs the SDK, installs it, and runs real
+      # deployments, so it is slower than the unit tests and gets its own job.
+      - run: make test_conformance
+
+  example:
+    name: example (pulumi up)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: sdk/ruby
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pulumi-language-ruby/go.mod
+      - uses: pulumi/actions@v6
+      - name: Build and install the language host
+        run: |
+          make build_language_host
+          echo "$GITHUB_WORKSPACE/pulumi-language-ruby" >> "$GITHUB_PATH"
+      # The unit tests mock the engine; this asserts the real thing works, which is the
+      # only way to catch protocol drift between the SDK and the CLI it ships against.
+      - name: Deploy the example end to end
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ci
+        run: |
+          pulumi login --local
+          cd examples/random-pet
+          pulumi stack init ci
+          pulumi install
+          pulumi up --yes --non-interactive
+          pulumi stack output name
+          pulumi destroy --yes --non-interactive
