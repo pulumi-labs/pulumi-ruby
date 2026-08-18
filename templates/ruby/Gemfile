@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+# Nothing is published yet, so point this at your checkout of pulumi-ruby:
+#
+#   gem "pulumi", path: "../pulumi-ruby/sdk/ruby"
+gem "pulumi"

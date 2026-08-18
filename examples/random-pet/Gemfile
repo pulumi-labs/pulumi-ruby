@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+# Points at the SDK in this repository so the example runs against local changes. A real
+# project would just say `gem "pulumi"`.
+gem "pulumi", path: "../../sdk/ruby"

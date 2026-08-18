@@ -1,0 +1,3 @@
+name: random-pet
+runtime: ruby
+description: A minimal Pulumi program written in Ruby
