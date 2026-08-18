@@ -1,0 +1,27 @@
+# frozen_string_literal: true
+
+require "bundler/gem_tasks"
+require "rspec/core/rake_task"
+require "rubocop/rake_task"
+
+RSpec::Core::RakeTask.new(:spec)
+RuboCop::RakeTask.new(:rubocop)
+
+desc "Validate the RBS signatures are well formed"
+task :rbs do
+  sh "bundle exec rbs -I sig validate"
+end
+
+desc "Type check the sample program against the signatures"
+task :steep do
+  # Steep's parser accepts things Ruby does not -- an inline `x: T = v` annotation, for
+  # instance -- so the sample is syntax-checked as real Ruby first. Without this a broken
+  # sample can type-check cleanly while being unrunnable.
+  sh "ruby -c typecheck/program.rb > /dev/null"
+  sh "bundle exec steep check"
+end
+
+desc "Validate signatures and type check the sample program"
+task types: %i[rbs steep]
+
+task default: %i[spec rubocop types]
